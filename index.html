@@ -37,12 +37,6 @@
     <div class="header">国道ステッカー収集</div>
     <div v-if="isLoading" class="loading">ユーザー認証中...</div>
     <div v-else class="container">
-    <!-- デバッグ用：自分のIDを表示 -->
-<div style="background: #fff; padding: 10px; margin-bottom: 10px; border: 1px dashed #f00; font-size: 11px; word-break: break-all;">
-  <strong>【デバッグ情報】</strong><br>
-  あなたのLINE USER ID: <span style="color: #d9534f;">{{ rawLiffId }}</span><br>
-  システム上のユーザーID: {{ currentUserId }}
-</div>
       
       <!-- 1. メインページ -->
       <div v-if="currentPage === 'main'">
@@ -222,8 +216,6 @@
         const isUnpurchasedMode = ref(false);
         const expandedRouteId = ref(null);
         const expandedStoreId = ref(null);
-        // setup() の中で新しい変数「rawLiffId」を追加
-const rawLiffId = ref('取得中...');
 
         const form = ref({
           store_id: '', real_store_id: '', route_id: '', datetime: '', purchaser: '', 
@@ -325,7 +317,6 @@ const rawLiffId = ref('取得中...');
               await liff.init({ liffId: "2009953521-b9zhdwvL" });
               if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
-                rawLiffId.value = profile.userId; // ← ここで取得した生のIDを画面表示用に代入
                 // 照合ロジック: ユーザーシートにline_idカラムが必要
                 const me = users.value.find(u => u.line_id === profile.userId);
                 if (me) {
@@ -395,7 +386,7 @@ const rawLiffId = ref('取得中...');
         });
 
         return { 
-          isLoading, currentPage, rawLiffId,　form, groupUsers, goToRecord, stores, nearbyStores,
+          isLoading, currentPage, form, groupUsers, goToRecord, stores, nearbyStores,
           storeSearchQuery, filteredSearchStores, availableRoutes, saveRecordAction, 
           isUnpurchasedMode, toggleUnpurchased, storeListSearch, filteredStoreList, sortedRoutes,
           isPurchased, getStoresByRoute, expandedRouteId, toggleRouteDetail,
