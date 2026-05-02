@@ -35,6 +35,10 @@
 <body>
   <div id="app">
     <div class="header">My Sticker Collection</div>
+    <div v-if="!isLoading" style="background: #e7f3ff; padding: 8px 15px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d1e7ff;">
+      <span>ログイン中: <strong>{{ loginUserName }}</strong> さん</span>
+      <span v-if="!isUserMatched" style="color: #dc3545; font-size: 0.8em;">⚠️ 未登録ユーザー</span>
+    </div>
     <div v-if="isLoading" class="loading">ユーザー認証を実施中...</div>
     <div v-else class="container">
       
@@ -222,6 +226,17 @@
           aux_sticker: '', memo: '', reason: '売り切れ', reason_free: ''
         });
 
+        const loginUserName = computed(() => {
+          // currentUserId に一致するユーザーを users リストから探す
+          const me = users.value.find(u => String(u.id) === String(currentUserId.value));[cite: 1]
+          return me ? (me.display_name || me.name) : '未登録ユーザー';[cite: 2]
+        });
+        
+        const isUserMatched = computed(() => {
+          // スプレッドシートの line_id と一致する人が見つかっているか判定
+          return users.value.some(u => String(u.id) === String(currentUserId.value));[cite: 1]
+        });
+
         const getDistance = (lat1, lon1, lat2, lon2) => {
           const R = 6371;
           const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -383,7 +398,7 @@
         });
 
         return { 
-          isLoading, currentPage, form, groupUsers, goToRecord, stores, nearbyStores,
+          isLoading, currentPage, loginUserName, isUserMatched, form, groupUsers, goToRecord, stores, nearbyStores,
           storeSearchQuery, filteredSearchStores, availableRoutes, saveRecordAction, 
           isUnpurchasedMode, toggleUnpurchased, storeListSearch, filteredStoreList, sortedRoutes,
           isPurchased, getStoresByRoute, expandedRouteId, toggleRouteDetail,
