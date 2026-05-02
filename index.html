@@ -182,7 +182,7 @@
         </div>
       </div>
 
-      <!-- 4. 国道リスト (変更なし) -->
+      <!-- 4. 国道リスト -->
       <div v-if="currentPage === 'routeList'">
         <h3>国道リスト</h3>
         <div v-for="r in sortedRoutes" :key="r.route_number" class="card" style="padding:12px;">
@@ -203,7 +203,7 @@
           
           <div v-if="expandedRouteId === r.route_number" class="expand-area">
             <p class="detail-text" style="font-weight:bold;">取扱店リスト（近い順）:</p>
-            <div v-for="s in getStoresByRoute(r.route_number).slice(0,5)" :key="s.id" style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+            <div v-for="s in getStoresByRoute(r.route_number).slice(0,99)" :key="s.id" style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
               <span class="detail-text" style="flex:1;">・{{ s.name }} ({{ s.distance.toFixed(1) }}km)</span>
               <button class="btn-outline" style="padding:4px 8px; font-size:0.75em; width:auto; margin:0;" @click="goToRecord(s.id, r.route_number)">✎ 購入記録</button>
             </div>
