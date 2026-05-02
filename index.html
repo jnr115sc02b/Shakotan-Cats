@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>国道ステッカーアプリ</title>
+  <!-- LIFF SDK の読み込み -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f4f8; color: #333; padding-bottom: 70px; }
+    .header { background: #fff; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; font-weight: bold; }
+    .container { padding: 0 15px; }
+    button { padding: 12px; border-radius: 8px; border: none; font-weight: bold; width: 100%; box-sizing: border-box; cursor: pointer; margin-bottom: 10px; display: block; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-outline { background: white; border: 1px solid #ccc; color: #333; }
+    .btn-danger { background: #dc3545; color: white; }
+    .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-size: 0.85em; margin-bottom: 5px; color: #555; font-weight: bold; }
+    select, input, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+    .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #fff; display: flex; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); z-index: 1000; }
+    .nav-item { flex: 1; text-align: center; padding: 15px 0; font-size: 0.85em; color: #666; cursor: pointer; border-top: 3px solid transparent; }
+    .nav-item.active { color: #007bff; font-weight: bold; border-top: 3px solid #007bff; }
+    .loading { text-align: center; padding: 40px 20px; color: #666; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; margin-left: 5px; background: #eee; }
+    .badge-ok { background: #28a745; color: white; }
+    .badge-blue { background: #e7f3ff; color: #007bff; }
+    .detail-text { font-size: 0.8em; color: #666; margin: 3px 0; line-height: 1.4; }
+    .text-primary { color: #007bff; }
+    .expand-area { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="header">国道ステッカー収集</div>
+    <div v-if="isLoading" class="loading">ユーザー認証中...</div>
+    <div v-else class="container">
+      
+      <!-- 1. メインページ -->
+      <div v-if="currentPage === 'main'">
+        <button class="btn-primary" style="padding: 20px; font-size: 1.1em; width: 100%;" @click="goToRecord()">＋ 購入記録をつける</button>
+        <div v-if="nearbyStores.length" style="margin-top: 20px;">
+          <h4 style="margin-bottom:10px;">近くの店舗</h4>
+          <div v-for="s in nearbyStores.slice(0,3)" :key="s.id" class="card" @click="goToRecord(s.id)">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>{{ s.name }}</strong>
+              <small class="text-primary">{{ s.distance.toFixed(1) }}km</small>
+            </div>
+            <p class="detail-text">{{ s.address }}{{ s.address_2 }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 購入記録ページ -->
+      <div v-if="currentPage === 'record'">
+        <h3>記録フォーム</h3>
+        <div class="card" style="padding: 15px;">
+          <div class="form-group">
+            <label>購入店舗</label>
+            <select v-model="form.store_id">
+              <option value="">-- 近隣5軒から選択 --</option>
+              <option v-for="s in nearbyStores.slice(0,5)" :key="s.id" :value="String(s.id)">
+                {{ s.name }} ({{ s.distance.toFixed(1) }}km)
+              </option>
+              <option value="search_mode">上記以外の店舗を検索...</option>
+            </select>
+          </div>
+
+          <div v-if="form.store_id === 'search_mode'" class="form-group" style="background:#f9f9f9; padding:10px; border-radius:5px;">
+            <label>🔍 店舗検索・選択中</label>
+            <input type="text" v-model="storeSearchQuery" placeholder="店舗名を入力して絞り込み">
+            <select v-model="form.real_store_id" style="margin-top:5px;">
+              <option value="">-- 店舗を選択してください --</option>
+              <option v-for="s in filteredSearchStores" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>国道番号</label>
+            <select v-model="form.route_id" :disabled="!availableRoutes.length">
+              <option value="">-- 国道を選択 --</option>
+              <option v-for="r in availableRoutes" :key="r" :value="String(r)">国道{{ r }}号</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>日時</label>
+            <input type="datetime-local" v-model="form.datetime">
+          </div>
+
+          <div class="form-group">
+            <label>購入者</label>
+            <select v-model="form.purchaser">
+              <option v-for="u in groupUsers" :key="u.id" :value="String(u.id)">{{ u.display_name || u.name }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>補助シール内容</label>
+            <input type="text" v-model="form.aux_sticker" placeholder="東海道、日光街道など">
+          </div>
+
+          <div class="form-group">
+            <label>メモ</label>
+            <textarea v-model="form.memo" rows="2" placeholder="自由入力"></textarea>
+          </div>
+
+          <button class="btn-primary" style="width: 100%;" @click="saveRecordAction('purchased')">購入完了として保存</button>
+          <button class="btn-outline" style="width: 100%; color:#dc3545; border-color:#dc3545;" @click="toggleUnpurchased">未購入として記録...</button>
+          
+          <div v-if="isUnpurchasedMode" class="form-group" style="margin-top:5px; background:#fff5f5; padding:10px; border-radius:8px; border:1px solid #ffc1c1;">
+            <label>未購入の理由</label>
+            <select v-model="form.reason" style="margin-bottom:8px;">
+              <option value="売り切れ">売り切れ</option>
+              <option value="営業時間外">営業時間外・定休日</option>
+              <option value="その他">その他</option>
+            </select>
+            <input v-if="form.reason === 'その他'" type="text" v-model="form.reason_free" placeholder="理由を詳しく入力" style="margin-bottom:10px;">
+            <button class="btn-danger" style="width: 100%;" @click="saveRecordAction('unpurchased')">未購入を確定して保存</button>
+          </div>
+
+          <button class="btn-secondary" style="width: 100%; margin-top:10px;" @click="currentPage = 'main'">戻る</button>
+        </div>
+      </div>
+
+      <!-- 3. 店舗リスト -->
+      <div v-if="currentPage === 'storeList'">
+        <h3>店舗リスト</h3>
+        <input type="text" v-model="storeListSearch" placeholder="店舗名・住所・国道番号で検索" style="margin-bottom:15px;">
+        <div v-for="s in filteredStoreList" :key="s.id" class="card" style="padding:12px;">
+          <div @click="toggleStoreDetail(s.id)" style="cursor:pointer;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>{{ s.name }}</strong>
+              <small class="text-primary">{{ s.distance.toFixed(1) }}km</small>
+            </div>
+            <p class="detail-text">{{ s.address }}{{ s.address_2 }}</p>
+            <div style="margin-top:8px;">
+              <span v-for="r in s.routes" :key="r" :class="['badge', isPurchased(r) ? 'badge-ok' : 'badge-blue']">
+                国道{{ r }}号 {{ isPurchased(r) ? '✓' : '' }}
+              </span>
+            </div>
+          </div>
+          
+          <div v-if="expandedStoreId === s.id" class="expand-area">
+            <p class="detail-text"><strong>営業時間:</strong> {{ s.business_hours || '情報なし' }}</p>
+            <p class="detail-text"><strong>定休日:</strong> {{ s.holiday || '情報なし' }}</p>
+            <p class="detail-text" v-if="s.tel"><strong>電話番号:</strong> <a :href="'tel:' + s.tel">{{ s.tel }}</a></p>
+            
+            <div style="margin-top:10px; display:flex; gap:10px;">
+              <button class="btn-primary" style="flex:1; margin:0;" @click="goToRecord(s.id)">記録をつける</button>
+              <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.address + s.address_2)" target="_blank" style="flex:1; text-decoration:none;">
+                <button class="btn-outline" style="width:100%; margin:0;">マップ</button>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. 国道リスト -->
+      <div v-if="currentPage === 'routeList'">
+        <h3>国道リスト</h3>
+        <div v-for="r in sortedRoutes" :key="r.route_number" class="card" style="padding:12px;">
+          <div @click="toggleRouteDetail(r.route_number)" style="cursor:pointer;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong>国道{{ r.route_number }}号</strong>
+                <span v-if="isPurchased(r.route_number)" class="badge badge-ok">入手済</span>
+              </div>
+              <span style="font-size:0.8em; color:#888;">{{ expandedRouteId === r.route_number ? '▲' : '▼' }}</span>
+            </div>
+            <p class="detail-text">{{ r.origin }} ～ {{ r.dest }}</p>
+            <p class="detail-text" style="color:#444;">
+              総延長: <span class="text-primary">{{ r.gross_length }}km</span> / 
+              実延長: <span class="text-primary">{{ r.net_length }}km</span>
+            </p>
+          </div>
+          
+          <div v-if="expandedRouteId === r.route_number" class="expand-area">
+            <p class="detail-text" style="font-weight:bold;">取扱店リスト（近い順）:</p>
+            <div v-for="s in getStoresByRoute(r.route_number).slice(0,5)" :key="s.id" style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+              <span class="detail-text" style="flex:1;">・{{ s.name }} ({{ s.distance.toFixed(1) }}km)</span>
+              <button class="btn-outline" style="padding:4px 8px; font-size:0.75em; width:auto; margin:0;" @click="goToRecord(s.id, r.route_number)">記録 ✎</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ボトムナビ -->
+    <div v-if="!isLoading && currentPage !== 'record'" class="bottom-nav">
+      <div class="nav-item" :class="{ active: currentPage === 'main' }" @click="currentPage = 'main'">🏠 メイン</div>
+      <div class="nav-item" :class="{ active: currentPage === 'storeList' }" @click="currentPage = 'storeList'">🏪 店舗</div>
+      <div class="nav-item" :class="{ active: currentPage === 'routeList' }" @click="currentPage = 'routeList'">🛣️ 国道</div>
+    </div>
+  </div>
+
+  <script>
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz94ooBRJRkbppq_4GoIC5obTT0jvl0iDOTi9nLq002u-Mr4C6kul77qa0zE1bW4lsJ/exec";
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+    createApp({
+      setup() {
+        const isLoading = ref(true);
+        const currentPage = ref('main');
+        const stores = ref([]);
+        const users = ref([]);
+        const routesInfo = ref([]);
+        const purchasedRoutes = ref([]);
+        const currentUserId = ref('');
+        const currentLocation = ref({ lat: 35.6895, lng: 139.6917 });
+        
+        const storeSearchQuery = ref('');
+        const storeListSearch = ref('');
+        const isUnpurchasedMode = ref(false);
+        const expandedRouteId = ref(null);
+        const expandedStoreId = ref(null);
+
+        const form = ref({
+          store_id: '', real_store_id: '', route_id: '', datetime: '', purchaser: '', 
+          aux_sticker: '', memo: '', reason: '売り切れ', reason_free: ''
+        });
+
+        const getDistance = (lat1, lon1, lat2, lon2) => {
+          const R = 6371;
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLon = (lon2 - lon1) * Math.PI / 180;
+          const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        };
+
+        const nearbyStores = computed(() => {
+          return stores.value.map(s => ({
+            ...s,
+            distance: getDistance(currentLocation.value.lat, currentLocation.value.lng, s.lat, s.lng)
+          })).sort((a, b) => a.distance - b.distance);
+        });
+
+        const filteredSearchStores = computed(() => {
+          const q = storeSearchQuery.value.toLowerCase();
+          return stores.value.filter(s => s.name.toLowerCase().includes(q));
+        });
+
+        const filteredStoreList = computed(() => {
+          const q = storeListSearch.value.toLowerCase();
+          return nearbyStores.value.filter(s => 
+            s.name.toLowerCase().includes(q) || 
+            s.address.toLowerCase().includes(q) || 
+            (s.routes && s.routes.some(r => String(r).includes(q)))
+          );
+        });
+
+        const availableRoutes = computed(() => {
+          const sid = form.value.store_id === 'search_mode' ? form.value.real_store_id : form.value.store_id;
+          const store = stores.value.find(s => String(s.id) === String(sid));
+          return store ? store.routes : [];
+        });
+
+        watch(() => availableRoutes.value, (newRoutes) => {
+          if (newRoutes.length === 1) { form.value.route_id = String(newRoutes[0]); }
+          else if (!newRoutes.includes(form.value.route_id)) { form.value.route_id = ''; }
+        });
+
+        const groupUsers = computed(() => {
+          const me = users.value.find(u => String(u.id) === String(currentUserId.value));
+          return me ? users.value.filter(u => String(u.member_of) === String(me.member_of)) : users.value;
+        });
+
+        const sortedRoutes = computed(() => [...routesInfo.value].sort((a,b) => Number(a.route_number) - Number(b.route_number)));
+        const isPurchased = (num) => purchasedRoutes.value.includes(String(num));
+        const getStoresByRoute = (num) => nearbyStores.value.filter(s => s.routes && s.routes.includes(String(num)));
+
+        const goToRecord = (storeId = '', routeId = '') => {
+          const sid = String(storeId);
+          const rid = String(routeId);
+          const now = new Date();
+          now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+          form.value.datetime = now.toISOString().slice(0, 16);
+          form.value.purchaser = String(currentUserId.value);
+          const isNearby = nearbyStores.value.slice(0, 5).some(s => String(s.id) === sid);
+          if (sid && !isNearby) {
+            form.value.store_id = 'search_mode';
+            form.value.real_store_id = sid;
+            const targetStore = stores.value.find(s => String(s.id) === sid);
+            storeSearchQuery.value = targetStore ? targetStore.name : '';
+          } else {
+            form.value.store_id = sid;
+            form.value.real_store_id = '';
+          }
+          form.value.route_id = rid;
+          form.value.aux_sticker = '';
+          form.value.memo = '';
+          form.value.reason = '売り切れ';
+          form.value.reason_free = '';
+          isUnpurchasedMode.value = false;
+          currentPage.value = 'record';
+        };
+
+        const toggleUnpurchased = () => { isUnpurchasedMode.value = !isUnpurchasedMode.value; };
+        const toggleRouteDetail = (id) => { expandedRouteId.value = expandedRouteId.value === id ? null : id; };
+        const toggleStoreDetail = (id) => { expandedStoreId.value = expandedStoreId.value === id ? null : id; };
+
+        // アプリ起動とLIFF判定
+        const fetchAppData = () => {
+          // GETリクエストでデータを取得
+          fetch(`${GAS_WEB_APP_URL}?action=getAppData`)
+            .then(response => response.json())
+            .then(async (data) => {
+            stores.value = data.stores || [];
+            users.value = data.users || [];
+            routesInfo.value = data.routesInfo || [];
+            purchasedRoutes.value = data.purchasedRoutes || [];
+            
+            // LIFF ユーザー判定
+            try {
+              await liff.init({ liffId: "2009953521-b9zhdwvL" });
+              if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                // 照合ロジック: ユーザーシートにline_idカラムが必要
+                const me = users.value.find(u => u.line_id === profile.userId);
+                if (me) {
+                  currentUserId.value = String(me.id);
+                } else {
+                  // 未登録ユーザーの場合、ひとまずリスト先頭を割り当てる等の代替処理
+                  if (users.value.length > 0) currentUserId.value = String(users.value[0].id);
+                }
+              } else {
+                // LINE未ログイン時（ブラウザテスト等）
+                if (users.value.length > 0) currentUserId.value = String(users.value[0].id);
+              }
+            } catch (err) {
+              console.error("LIFF Error", err);
+              if (users.value.length > 0) currentUserId.value = String(users.value[0].id);
+            }
+            
+            isLoading.value = false;
+          }).getAppData();
+        };
+
+        const saveRecordAction = (status) => {
+          const finalStoreId = form.value.store_id === 'search_mode' ? form.value.real_store_id : form.value.store_id;
+          if (!finalStoreId || !form.value.route_id) {
+            alert('店舗と国道番号を選択してください');
+            return;
+          }
+
+          const payload = {
+            store_id: finalStoreId,
+            route_id: form.value.route_id,
+            status: status,
+            datetime: form.value.datetime,
+            purchaser: form.value.purchaser,
+            aux_sticker: form.value.aux_sticker,
+            reason: (status === 'unpurchased') ? (form.value.reason === 'その他' ? 'その他(' + form.value.reason_free + ')' : form.value.reason) : '',
+            memo: form.value.memo,
+            created_by: currentUserId.value // LINE判定されたIDが送られる
+          };
+
+          isLoading.value = true;
+
+          // POSTリクエストでデータを送信
+          fetch(GAS_WEB_APP_URL, {
+            method: "POST",
+            body: JSON.stringify(payload)
+          })
+          .then(res => res.json())
+          .then(res => {
+            alert(res.message);
+            fetchAppData();
+            currentPage.value = 'main';
+          })
+          .catch(err => {
+            alert("保存に失敗しました: " + err);
+            isLoading.value = false;
+          });
+        };
+
+        onMounted(() => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+              currentLocation.value = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            });
+          }
+          fetchAppData();
+        });
+
+        return { 
+          isLoading, currentPage, form, groupUsers, goToRecord, stores, nearbyStores,
+          storeSearchQuery, filteredSearchStores, availableRoutes, saveRecordAction, 
+          isUnpurchasedMode, toggleUnpurchased, storeListSearch, filteredStoreList, sortedRoutes,
+          isPurchased, getStoresByRoute, expandedRouteId, toggleRouteDetail,
+          expandedStoreId, toggleStoreDetail
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
