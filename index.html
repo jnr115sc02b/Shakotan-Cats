@@ -9,7 +9,8 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
     body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f4f8; color: #333; padding-bottom: 70px; }
-    .header { background: #fff; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; font-weight: bold; }
+    .header { background: #fff; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-weight: bold; }
+    .login-status-bar { background: #e7f3ff; padding: 8px 15px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d1e7ff; margin-bottom: 15px; }
     .container { padding: 0 15px; }
     button { padding: 12px; border-radius: 8px; border: none; font-weight: bold; width: 100%; box-sizing: border-box; cursor: pointer; margin-bottom: 10px; display: block; }
     .btn-primary { background: #007bff; color: white; }
@@ -35,7 +36,7 @@
 <body>
   <div id="app">
     <div class="header">My Sticker Collection</div>
-    <div v-if="!isLoading" style="background: #e7f3ff; padding: 8px 15px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d1e7ff;">
+    <div v-if="!isLoading" class="login-status-bar">
       <span>ログイン中: <strong>{{ loginUserName }}</strong> さん</span>
       <span v-if="!isUserMatched" style="color: #dc3545; font-size: 0.8em;">⚠️ 未登録ユーザー</span>
     </div>
