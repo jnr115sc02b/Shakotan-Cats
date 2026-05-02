@@ -316,7 +316,7 @@
                 await liff.init({ liffId: "2009953521-b9zhdwvL" });
                 if (liff.isLoggedIn()) {
                   const profile = await liff.getProfile();
-                  const me = users.value.find(u => u.line_id === profile.userId);
+                  const me = users.value.find(u => u.line_user_id === profile.userId);
                   if (me) {
                     currentUserId.value = String(me.id);
                   } else if (users.value.length > 0) {
