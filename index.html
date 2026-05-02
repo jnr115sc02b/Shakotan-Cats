@@ -31,6 +31,7 @@
     .detail-text { font-size: 0.8em; color: #666; margin: 3px 0; line-height: 1.4; }
     .text-primary { color: #007bff; }
     .expand-area { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; }
+    .url-link { color: #007bff; text-decoration: none; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -47,18 +48,36 @@
       <div v-if="currentPage === 'main'">
         <button class="btn-primary" style="padding: 20px; font-size: 1.1em; width: 100%;" @click="goToRecord()">＋ 購入記録をつける</button>
         <div v-if="nearbyStores.length" style="margin-top: 20px;">
-          <h4 style="margin-bottom:10px;">近くの店舗</h4>
-          <div v-for="s in nearbyStores.slice(0,3)" :key="s.id" class="card" @click="goToRecord(s.id)">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong>{{ s.name }}</strong>
-              <small class="text-primary">{{ s.distance.toFixed(1) }}km</small>
+          <h4 style="margin-bottom:10px;">近くの取り扱い店舗</h4>
+          <!-- クリックで詳細を展開するように変更 -->
+          <div v-for="s in nearbyStores.slice(0,3)" :key="s.id" class="card">
+            <div @click="toggleStoreDetail(s.id)" style="cursor:pointer;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>{{ s.name }}</strong>
+                <small class="text-primary">{{ s.distance.toFixed(1) }}km</small>
+              </div>
+              <p class="detail-text">{{ s.address }}{{ s.address_2 }}</p>
             </div>
-            <p class="detail-text">{{ s.address }}{{ s.address_2 }}</p>
+            
+            <!-- メインページでも詳細表示を有効化 -->
+            <div v-if="expandedStoreId === s.id" class="expand-area">
+              <p class="detail-text"><strong>営業時間:</strong> {{ s.business_hours || '情報なし' }}</p>
+              <p class="detail-text"><strong>定休日:</strong> {{ s.holiday || '情報なし' }}</p>
+              <p class="detail-text" v-if="s.tel"><strong>電話番号:</strong> <a :href="'tel:' + s.tel">{{ s.tel }}</a></p>
+              <p class="detail-text" v-if="s.url"><strong>URL:</strong> <a :href="s.url" target="_blank" class="url-link">{{ s.url }}</a></p>
+              
+              <div style="margin-top:10px; display:flex; gap:10px;">
+                <button class="btn-primary" style="flex:1; margin:0;" @click="goToRecord(s.id)">✎ 購入記録</button>
+                <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.address + s.address_2)" target="_blank" style="flex:1; text-decoration:none;">
+                  <button class="btn-outline" style="width:100%; margin:0;">マップ</button>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 2. 購入記録ページ -->
+      <!-- 2. 購入記録ページ (変更なし) -->
       <div v-if="currentPage === 'record'">
         <h3>購入記録入力</h3>
         <div class="card" style="padding: 15px;">
@@ -152,9 +171,10 @@
             <p class="detail-text"><strong>営業時間:</strong> {{ s.business_hours || '情報なし' }}</p>
             <p class="detail-text"><strong>定休日:</strong> {{ s.holiday || '情報なし' }}</p>
             <p class="detail-text" v-if="s.tel"><strong>電話番号:</strong> <a :href="'tel:' + s.tel">{{ s.tel }}</a></p>
+            <p class="detail-text" v-if="s.url"><strong>URL:</strong> <a :href="s.url" target="_blank" class="url-link">{{ s.url }}</a></p>
             
             <div style="margin-top:10px; display:flex; gap:10px;">
-              <button class="btn-primary" style="flex:1; margin:0;" @click="goToRecord(s.id)">記録をつける</button>
+              <button class="btn-primary" style="flex:1; margin:0;" @click="goToRecord(s.id)">✎ 購入記録</button>
               <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.address + s.address_2)" target="_blank" style="flex:1; text-decoration:none;">
                 <button class="btn-outline" style="width:100%; margin:0;">マップ</button>
               </a>
@@ -163,7 +183,7 @@
         </div>
       </div>
 
-      <!-- 4. 国道リスト -->
+      <!-- 4. 国道リスト (変更なし) -->
       <div v-if="currentPage === 'routeList'">
         <h3>国道リスト</h3>
         <div v-for="r in sortedRoutes" :key="r.route_number" class="card" style="padding:12px;">
@@ -186,7 +206,7 @@
             <p class="detail-text" style="font-weight:bold;">取扱店リスト（近い順）:</p>
             <div v-for="s in getStoresByRoute(r.route_number).slice(0,5)" :key="s.id" style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
               <span class="detail-text" style="flex:1;">・{{ s.name }} ({{ s.distance.toFixed(1) }}km)</span>
-              <button class="btn-outline" style="padding:4px 8px; font-size:0.75em; width:auto; margin:0;" @click="goToRecord(s.id, r.route_number)">記録 ✎</button>
+              <button class="btn-outline" style="padding:4px 8px; font-size:0.75em; width:auto; margin:0;" @click="goToRecord(s.id, r.route_number)">✎ 購入記録</button>
             </div>
           </div>
         </div>
@@ -194,10 +214,10 @@
 
     </div>
 
-    <!-- ボトムナビ -->
+    <!-- ボトムナビ (変更なし) -->
     <div v-if="!isLoading && currentPage !== 'record'" class="bottom-nav">
-      <div class="nav-item" :class="{ active: currentPage === 'main' }" @click="currentPage = 'main'">🏠 メイン</div>
-      <div class="nav-item" :class="{ active: currentPage === 'storeList' }" @click="currentPage = 'storeList'">🏪 店舗</div>
+      <div class="nav-item" :class="{ active: currentPage === 'main' }" @click="currentPage = 'main'">🏠 ホーム</div>
+      <div class="nav-item" :class="{ active: currentPage === 'storeList' }" @click="currentPage = 'storeList'">🏪 取扱店舗</div>
       <div class="nav-item" :class="{ active: currentPage === 'routeList' }" @click="currentPage = 'routeList'">🛣️ 国道</div>
     </div>
   </div>
@@ -228,13 +248,11 @@
         });
 
         const loginUserName = computed(() => {
-          // currentUserId に一致するユーザーを users リストから探す
           const me = users.value.find(u => String(u.id) === String(currentUserId.value));
           return me ? (me.display_name || me.name) : '未登録ユーザー';
         });
         
         const isUserMatched = computed(() => {
-          // スプレッドシートの line_id と一致する人が見つかっているか判定
           return users.value.some(u => String(u.id) === String(currentUserId.value));
         });
 
