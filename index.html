@@ -37,6 +37,12 @@
     <div class="header">国道ステッカー収集</div>
     <div v-if="isLoading" class="loading">ユーザー認証中...</div>
     <div v-else class="container">
+    <!-- デバッグ用：自分のIDを表示 -->
+<div style="background: #fff; padding: 10px; margin-bottom: 10px; border: 1px dashed #f00; font-size: 11px; word-break: break-all;">
+  <strong>【デバッグ情報】</strong><br>
+  あなたのLINE USER ID: <span style="color: #d9534f;">{{ rawLiffId }}</span><br>
+  システム上のユーザーID: {{ currentUserId }}
+</div>
       
       <!-- 1. メインページ -->
       <div v-if="currentPage === 'main'">
@@ -317,6 +323,7 @@
               await liff.init({ liffId: "2009953521-b9zhdwvL" });
               if (liff.isLoggedIn()) {
                 const profile = await liff.getProfile();
+                rawLiffId.value = profile.userId; // ← ここで取得した生のIDを画面表示用に代入
                 // 照合ロジック: ユーザーシートにline_idカラムが必要
                 const me = users.value.find(u => u.line_id === profile.userId);
                 if (me) {
@@ -386,7 +393,7 @@
         });
 
         return { 
-          isLoading, currentPage, form, groupUsers, goToRecord, stores, nearbyStores,
+          isLoading, currentPage, rawLiffId,　form, groupUsers, goToRecord, stores, nearbyStores,
           storeSearchQuery, filteredSearchStores, availableRoutes, saveRecordAction, 
           isUnpurchasedMode, toggleUnpurchased, storeListSearch, filteredStoreList, sortedRoutes,
           isPurchased, getStoresByRoute, expandedRouteId, toggleRouteDetail,
