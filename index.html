@@ -229,13 +229,13 @@
 
         const loginUserName = computed(() => {
           // currentUserId に一致するユーザーを users リストから探す
-          const me = users.value.find(u => String(u.id) === String(currentUserId.value));[cite: 1]
-          return me ? (me.display_name || me.name) : '未登録ユーザー';[cite: 2]
+          const me = users.value.find(u => String(u.id) === String(currentUserId.value));
+          return me ? (me.display_name || me.name) : '未登録ユーザー';
         });
         
         const isUserMatched = computed(() => {
           // スプレッドシートの line_id と一致する人が見つかっているか判定
-          return users.value.some(u => String(u.id) === String(currentUserId.value));[cite: 1]
+          return users.value.some(u => String(u.id) === String(currentUserId.value));
         });
 
         const getDistance = (lat1, lon1, lat2, lon2) => {
