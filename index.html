@@ -303,39 +303,36 @@
 
         // アプリ起動とLIFF判定
         const fetchAppData = () => {
-          // GETリクエストでデータを取得
+          isLoading.value = true; // 再読み込み時もローディングを表示
           fetch(`${GAS_WEB_APP_URL}?action=getAppData`)
             .then(response => response.json())
             .then(async (data) => {
-            stores.value = data.stores || [];
-            users.value = data.users || [];
-            routesInfo.value = data.routesInfo || [];
-            purchasedRoutes.value = data.purchasedRoutes || [];
-            
-            // LIFF ユーザー判定
-            try {
-              await liff.init({ liffId: "2009953521-b9zhdwvL" });
-              if (liff.isLoggedIn()) {
-                const profile = await liff.getProfile();
-                // 照合ロジック: ユーザーシートにline_idカラムが必要
-                const me = users.value.find(u => u.line_id === profile.userId);
-                if (me) {
-                  currentUserId.value = String(me.id);
-                } else {
-                  // 未登録ユーザーの場合、ひとまずリスト先頭を割り当てる等の代替処理
-                  if (users.value.length > 0) currentUserId.value = String(users.value[0].id);
+              stores.value = data.stores || [];
+              users.value = data.users || [];
+              routesInfo.value = data.routesInfo || [];
+              purchasedRoutes.value = data.purchasedRoutes || [];
+              
+              try {
+                await liff.init({ liffId: "2009953521-b9zhdwvL" });
+                if (liff.isLoggedIn()) {
+                  const profile = await liff.getProfile();
+                  const me = users.value.find(u => u.line_id === profile.userId);
+                  if (me) {
+                    currentUserId.value = String(me.id);
+                  } else if (users.value.length > 0) {
+                    currentUserId.value = String(users.value[0].id);
+                  }
                 }
-              } else {
-                // LINE未ログイン時（ブラウザテスト等）
-                if (users.value.length > 0) currentUserId.value = String(users.value[0].id);
+              } catch (err) {
+                console.error("LIFF Error", err);
               }
-            } catch (err) {
-              console.error("LIFF Error", err);
-              if (users.value.length > 0) currentUserId.value = String(users.value[0].id);
-            }
-            
-            isLoading.value = false;
-          }).getAppData();
+              
+              isLoading.value = false; // ここで正常にローディングが消える
+            })
+            .catch(err => {
+              console.error("データ取得エラー:", err);
+              isLoading.value = false;
+            });
         };
 
         const saveRecordAction = (status) => {
@@ -350,11 +347,11 @@
             route_id: form.value.route_id,
             status: status,
             datetime: form.value.datetime,
-            purchaser: form.value.purchaser,
+            purchaser_id: form.value.purchaser,
             aux_sticker: form.value.aux_sticker,
             reason: (status === 'unpurchased') ? (form.value.reason === 'その他' ? 'その他(' + form.value.reason_free + ')' : form.value.reason) : '',
             memo: form.value.memo,
-            created_by: currentUserId.value // LINE判定されたIDが送られる
+            create_by: currentUserId.value // LINE判定されたIDが送られる
           };
 
           isLoading.value = true;
@@ -371,7 +368,7 @@
             currentPage.value = 'main';
           })
           .catch(err => {
-            alert("保存に失敗しました: " + err);
+            alert("保存処理後の更新に失敗しました: " + err);
             isLoading.value = false;
           });
         };
