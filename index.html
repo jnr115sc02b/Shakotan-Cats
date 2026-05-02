@@ -222,6 +222,8 @@
         const isUnpurchasedMode = ref(false);
         const expandedRouteId = ref(null);
         const expandedStoreId = ref(null);
+        // setup() の中で新しい変数「rawLiffId」を追加
+const rawLiffId = ref('取得中...');
 
         const form = ref({
           store_id: '', real_store_id: '', route_id: '', datetime: '', purchaser: '', 
